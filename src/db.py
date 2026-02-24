@@ -34,7 +34,30 @@ def load_config_from_env() -> DBConfig:
     Recomendación:
     - Validar que DB_PORT sea un número entero.
     """
+    import os
+
+def load_config_from_env() -> DBConfig:
+    host = os.getenv("DB_HOST", "localhost")
+    port_str = os.getenv("DB_PORT", "3306")
+    name = os.getenv("DB_NAME", "sti_incidencias")
+    user = os.getenv("DB_USER", "sti_app")
+    password = os.getenv("DB_PASSWORD", "sti_app_2026")
+
+    # Validar que el puerto sea entero
+    try:
+        port = int(port_str)
+    except ValueError:
+        raise ValueError(f"DB_PORT debe ser un número entero válido: {port_str}")
+
+    host= os.getenv("DB_HOST", "localhost")
+    port= int(os.getenv("DB_PORT", "3306"))
+    database = os.getenv("DB_NAME", "sti_incidencias")
+    user = os.getenv("DB_USER", "sti_app")
+    password = os.getenv("DB_PASSWORD", "sti_app_2026")
+
+    return DBConfig(host, port, database, user, password)
     raise NotImplementedError
+
 
 
 def get_connection(cfg: Optional[DBConfig] = None) -> MySQLConnection:
@@ -44,6 +67,26 @@ def get_connection(cfg: Optional[DBConfig] = None) -> MySQLConnection:
     - Si cfg es None, debe llamar a load_config_from_env().
     - Debe usar mysql.connector.connect(...) con los parámetros de cfg.
     """
+    from typing import Optional
+from mysql.connector import connect, MySQLConnection
+
+def get_connection(cfg: Optional[DBConfig] = None) -> MySQLConnection:
+    """
+    Crea y devuelve una conexión MySQL/MariaDB.
+
+    - Si cfg es None, debe llamar a load_config_from_env().
+    - Debe usar mysql.connector.connect(...) con los parámetros de cfg.
+    """
+    if cfg is None:
+        cfg = load_config_from_env()
+
+    return connect(
+        host=cfg.host,
+        port=cfg.port,
+        user=cfg.user,
+        password=cfg.password,
+        database=cfg.database,
+    )
     raise NotImplementedError
 
 
@@ -57,6 +100,30 @@ def fetch_all(conn: MySQLConnection, query: str, params: Optional[Iterable[Any]]
     - Obtener filas con cur.fetchall()
     - Cerrar el cursor siempre (try/finally)
     """
+    from typing import Optional, Iterable, Any
+from mysql.connector import MySQLConnection
+
+def fetch_all(
+    conn: MySQLConnection,
+    query: str,
+    params: Optional[Iterable[Any]] = None
+) -> list[dict]:
+    """
+    Ejecuta una consulta SELECT y devuelve una lista de diccionarios (una fila -> un dict).
+
+    Pistas:
+    - Crear un cursor con conn.cursor(dictionary=True)
+    - Ejecutar cur.execute(query, params o ())
+    - Obtener filas con cur.fetchall()
+    - Cerrar el cursor siempre (try/finally)
+    """
+    cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute(query, params or ())
+        rows = cur.fetchall()
+        return rows
+    finally:
+        cur.close()
     raise NotImplementedError
 
 
@@ -72,3 +139,28 @@ def execute(conn: MySQLConnection, query: str, params: Optional[Iterable[Any]] =
     - Cerrar el cursor siempre (try/finally)
     """
     raise NotImplementedError
+    from typing import Optional, Iterable, Any
+from mysql.connector import MySQLConnection
+
+def execute(
+    conn: MySQLConnection,
+    query: str,
+    params: Optional[Iterable[Any]] = None
+) -> int:
+    """
+    Ejecuta una sentencia INSERT/UPDATE/DELETE y devuelve el número de filas afectadas.
+
+    Pistas:
+    - Crear un cursor normal conn.cursor()
+    - Ejecutar cur.execute(query, params o ())
+    - Hacer conn.commit()
+    - Devolver cur.rowcount
+    - Cerrar el cursor siempre (try/finally)
+    """
+    cur = conn.cursor()
+    try:
+        cur.execute(query, params or ())
+        conn.commit()
+        return cur.rowcount
+    finally:
+        cur.close()
